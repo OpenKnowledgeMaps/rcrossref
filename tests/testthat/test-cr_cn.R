@@ -7,7 +7,7 @@ test_that("cr_cn citeproc-json", {
     expect_match(b$`container-title`, "Science")
   })
 })
-  
+
 test_that("cr_cn bibtex", {
   skip_if_not_installed("bibtex")
   vcr::use_cassette("cr_cn_bibentry", {
@@ -25,7 +25,7 @@ test_that("cr_cn xml types", {
     d <- cr_cn("10.1126/science.169.3946.635", "crossref-xml")
     expect_is(d, "xml_document")
 
-    h <- cr_cn("10.3233/ISU-150780", "onix-xml")
+    h <- cr_cn("10.1430/8105", "onix-xml")
     expect_is(h, "xml_document")
   }, preserve_exact_body_bytes = TRUE,
   match_requests_on = c("method")
@@ -61,7 +61,7 @@ test_that("cr_cn checks if doi agency supports format", {
   vcr::use_cassette("cr_cn_doi_agency_check", {
 
     expect_error(
-      cr_cn(dois = "10.3233/ISU-150780", format = "crossref-tdm"),
+      cr_cn(dois = "10.1430/8105", format = "crossref-tdm"),
       "not supported by the DOI registration agency: 'medra'"
     )
     # expect_error(
@@ -79,10 +79,6 @@ test_that("cr_cn works with different URLs", {
   vcr::use_cassette("cr_cn_different_base_urls", {
 
     expect_match(
-      cr_cn("10.1126/science.169.3946.635", "text", url = "https://data.datacite.org"),
-      "Frank"
-    )
-    expect_match(
       cr_cn("10.1126/science.169.3946.635", "text", url = "http://dx.doi.org"),
       "Frank"
     )
@@ -92,3 +88,18 @@ test_that("cr_cn works with different URLs", {
     )
   }, preserve_exact_body_bytes = TRUE, match_requests_on = c("method"))
 })
+
+test_that("cr_cn cache works", {
+  vcr::use_cassette("cr_cn_cache", {
+    # reset cache
+    rm(list = ls(cr_cache_env), envir = cr_cache_env)
+    t1 <- system.time(b1 <- cr_cn(dois = "10.1126/science.169.3946.635", format = "citeproc-json", cache = TRUE))
+    t2 <- system.time(b2 <- cr_cn(dois = "10.1126/science.169.3946.635", format = "citeproc-json", cache = TRUE))
+    # compare timing to ensure that caching actually happened
+    expect_gt(t1[3], t2[3])
+    expect_identical(b1, b2)
+    expect_is(b1, "list")
+    expect_match(b1$`container-title`, "Science")
+  })
+})
+

@@ -3,10 +3,10 @@ rcrossref: R interface to CrossRef APIs
 
 
 
-[![cran checks](https://cranchecks.info/badges/worst/rcrossref)](https://cranchecks.info/pkgs/rcrossref)
+[![cran checks](https://badges.cranchecks.info/worst/rcrossref.svg)](https://cran.r-project.org/web/checks/check_results_rcrossref.html)
 [![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![R-check](https://github.com/ropensci/rcrossref/workflows/R-check/badge.svg)](https://github.com/ropensci/rcrossref/actions/)
-[![codecov](https://codecov.io/gh/ropensci/rcrossref/branch/master/graph/badge.svg)](https://codecov.io/gh/ropensci/rcrossref)
+[![R-check](https://github.com/ropensci/rcrossref/actions/workflows/R-check.yml/badge.svg)](https://github.com/ropensci/rcrossref/actions/workflows/R-check.yml)
+[![codecov](https://codecov.io/gh/ropensci/rcrossref/branch/master/graph/badge.svg)](https://app.codecov.io/gh/ropensci/rcrossref)
 [![rstudio mirror downloads](https://cranlogs.r-pkg.org/badges/rcrossref)](https://github.com/r-hub/cranlogs.app)
 [![cran version](https://www.r-pkg.org/badges/version/rcrossref)](https://cran.r-project.org/package=rcrossref)
 
