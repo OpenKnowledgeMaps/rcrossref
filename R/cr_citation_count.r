@@ -84,7 +84,7 @@ cr_cc_rest_async <- function(doi, plus_token, ...) {
       url = endpoint_url,
       headers = headers,
       opts = list(...)
-    )$get(query = list(select = "DOI,is-referenced-by-count"))
+    )$get()
   })
   cli <- crul::AsyncVaried$new(.list = reqs)
   cli$request()
