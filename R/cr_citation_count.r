@@ -103,7 +103,7 @@ cr_cc_rest_async <- function(doi, plus_token, ...) {
       warning("Failed to get citation count for DOI: ", d, call. = FALSE)
       data.frame(doi = d, count = NA_integer_, stringsAsFactors = FALSE)
     })
-  }, bodies, doi, SIMPLIFY = FALSE)
+  }, bodies, doi, SIMPLIFY = FALSE, USE.NAMES = FALSE)
   do.call(rbind, results)
 }
 
