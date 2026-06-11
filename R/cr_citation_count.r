@@ -114,7 +114,7 @@ cr_cc_rest_async <- function(doi, plus_token, max_retries = 3L, ...) {
                         utils::URLencode(d, reserved = TRUE)),
       headers = headers,
       opts    = list(...)
-    )$get(query = list(select = "DOI,is-referenced-by-count"))
+    )$get()
   })
 
   pending  <- doi
