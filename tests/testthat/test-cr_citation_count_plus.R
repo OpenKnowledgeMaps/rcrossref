@@ -49,10 +49,76 @@ test_that("batch splitting with batch_size = 1 gives one batch per DOI", {
 })
 
 test_that("cr_cc_rest_batched guard clamps NA batch_size to 50", {
-  # Test the NA guard: `if (is.na(batch_size) || batch_size < 1L) batch_size <- 50L`
-  # We verify this by checking the guard is present in the source.
   fn_src <- paste(deparse(body(rcrossref:::cr_cc_rest_batched)), collapse = " ")
   expect_match(fn_src, "is.na\\(batch_size\\)")
+})
+
+test_that("cr_citation_count has max_retries parameter defaulting to 3", {
+  default_args <- formals(cr_citation_count)
+  expect_true("max_retries" %in% names(default_args))
+  expect_equal(default_args$max_retries, 3L)
+})
+
+# ---------------------------------------------------------------------------
+# parse_rl_interval — pure unit tests, no HTTP
+# ---------------------------------------------------------------------------
+
+test_that("parse_rl_interval parses seconds correctly", {
+  expect_equal(rcrossref:::parse_rl_interval("1s"),   1)
+  expect_equal(rcrossref:::parse_rl_interval("60s"),  60)
+  expect_equal(rcrossref:::parse_rl_interval("0s"),   0)
+})
+
+test_that("parse_rl_interval parses milliseconds correctly", {
+  expect_equal(rcrossref:::parse_rl_interval("200ms"), 0.2)
+  expect_equal(rcrossref:::parse_rl_interval("1000ms"), 1)
+})
+
+test_that("parse_rl_interval defaults to 1 for NULL, NA, empty string", {
+  expect_equal(rcrossref:::parse_rl_interval(NULL), 1)
+  expect_equal(rcrossref:::parse_rl_interval(NA),   1)
+  expect_equal(rcrossref:::parse_rl_interval(""),   1)
+})
+
+test_that("parse_rl_interval defaults to 1 for unrecognised format", {
+  expect_equal(rcrossref:::parse_rl_interval("1m"), 1)
+})
+
+# ---------------------------------------------------------------------------
+# extract_rl_headers — unit tests with mock response-like objects
+# ---------------------------------------------------------------------------
+
+test_that("extract_rl_headers reads rate limit fields from response headers", {
+  mock_resps <- list(
+    list(response_headers = list(
+      `x-rate-limit-limit`    = "50",
+      `x-rate-limit-interval` = "1s",
+      `x-concurrency-limit`   = "5"
+    ))
+  )
+  rl <- rcrossref:::extract_rl_headers(mock_resps)
+  expect_equal(rl$limit,       50L)
+  expect_equal(rl$interval,    1)
+  expect_equal(rl$concurrency, 5L)
+})
+
+test_that("extract_rl_headers returns NULL when headers are absent", {
+  mock_resps <- list(list(response_headers = list(`content-type` = "application/json")))
+  expect_null(rcrossref:::extract_rl_headers(mock_resps))
+})
+
+test_that("extract_rl_headers uses first response that has rate limit headers", {
+  mock_resps <- list(
+    list(response_headers = list(`content-type` = "text/plain")),
+    list(response_headers = list(
+      `x-rate-limit-limit`    = "100",
+      `x-rate-limit-interval` = "500ms",
+      `x-concurrency-limit`   = "10"
+    ))
+  )
+  rl <- rcrossref:::extract_rl_headers(mock_resps)
+  expect_equal(rl$limit,    100L)
+  expect_equal(rl$interval, 0.5)
 })
 
 # ---------------------------------------------------------------------------
@@ -128,7 +194,7 @@ test_that("cr_citation_count REST path: multiple DOIs return one row each", {
   expect_equal(sort(result$doi), sort(dois))
 })
 
-test_that("cr_citation_count REST path: unparseable response returns NA, not error", {
+test_that("cr_citation_count REST path: non-retryable 4xx returns NA with HTTP warning", {
   webmockr::enable("crul")
   on.exit({
     webmockr::stub_registry_clear()
@@ -137,15 +203,40 @@ test_that("cr_citation_count REST path: unparseable response returns NA, not err
 
   webmockr::stub_request("get", uri_regex = "api\\.crossref\\.org/works") %>%
     webmockr::to_return(
-      body   = "Resource not found.",
-      status = 404L,
+      body    = "Resource not found.",
+      status  = 404L,
       headers = list(`content-type` = "text/plain")
     )
 
-  # tryCatch in cr_cc_rest_async turns parse errors into warnings + NA rows
   expect_warning(
     result <- cr_citation_count(doi = "10.9999/not.a.doi", plus_token = "test-token"),
-    regexp = "Failed to get citation count"
+    regexp = "HTTP 404"
+  )
+  expect_equal(nrow(result), 1L)
+  expect_true(is.na(result$count))
+})
+
+test_that("cr_citation_count REST path: 429 with max_retries=0 returns NA with warning", {
+  webmockr::enable("crul")
+  on.exit({
+    webmockr::stub_registry_clear()
+    webmockr::disable("crul")
+  })
+
+  webmockr::stub_request("get", uri_regex = "api\\.crossref\\.org/works") %>%
+    webmockr::to_return(
+      body    = "",
+      status  = 429L,
+      headers = list(`content-type` = "text/plain")
+    )
+
+  expect_warning(
+    result <- cr_citation_count(
+      doi        = "10.1371/journal.pone.0042793",
+      plus_token = "test-token",
+      max_retries = 0L
+    ),
+    regexp = "Max retries exceeded"
   )
   expect_equal(nrow(result), 1L)
   expect_true(is.na(result$count))
