@@ -21,16 +21,23 @@ rcrossref_ua <- function() {
   paste0(versions, collapse = " ")
 }
 
+get_plus_token <- function() {
+  token <- Sys.getenv("crossref_plus_token")
+  if (identical(token, "")) NULL else token
+}
+
 cr_GET <- function(endpoint, args, todf = TRUE, on_error = warning, parse = TRUE,
                    ...) {
   url <- sprintf("https://api.crossref.org/%s", endpoint)
-  cli <- crul::HttpClient$new(
-    url = url,
-    headers = list(
-      `User-Agent` = rcrossref_ua(),
-      `X-USER-AGENT` = rcrossref_ua()
-    )
+  headers <- list(
+    `User-Agent` = rcrossref_ua(),
+    `X-USER-AGENT` = rcrossref_ua()
   )
+  token <- get_plus_token()
+  if (!is.null(token)) {
+    headers[["Crossref-Plus-API-Token"]] <- paste0("Bearer ", token)
+  }
+  cli <- crul::HttpClient$new(url = url, headers = headers)
   if (length(args) == 0) {
     res <- cli$get(...)
   } else {
